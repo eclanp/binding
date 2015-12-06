@@ -349,6 +349,11 @@ VALIDATE_RULES:
 		if len(rule) == 0 {
 			continue
 		}
+		errmsg := field.Tag.Get("message")
+		label := field.Tag.Get("label")
+		if len(attribute) == 0 {
+			attribute = field.Name
+		}
 
 		switch {
 		case rule == "OmitEmpty":
@@ -357,7 +362,10 @@ VALIDATE_RULES:
 			}
 		case rule == "Required":
 			if reflect.DeepEqual(zero, fieldValue) {
-				errors.Add([]string{field.Name}, ERR_REQUIRED, "Required")
+				if len(errmsg) == 0 {
+					errmsg = fmt.Sprintf("%v为必填项", label)
+				}
+				errors.Add([]string{field.Name}, ERR_REQUIRED, errmsg)
 				break VALIDATE_RULES
 			}
 		case rule == "AlphaDash":
@@ -415,7 +423,10 @@ VALIDATE_RULES:
 			}
 		case rule == "Email":
 			if !emailPattern.MatchString(fmt.Sprintf("%v", fieldValue)) {
-				errors.Add([]string{field.Name}, ERR_EMAIL, "Email")
+				if len(errmsg) == 0 {
+					errmsg = fmt.Sprintf("%v必须为有效的邮箱地址", label)
+				}
+				errors.Add([]string{field.Name}, ERR_EMAIL, errmsg)
 				break VALIDATE_RULES
 			}
 		case rule == "Url":
