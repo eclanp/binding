@@ -351,8 +351,8 @@ VALIDATE_RULES:
 		}
 		errmsg := field.Tag.Get("message")
 		label := field.Tag.Get("label")
-		if len(attribute) == 0 {
-			attribute = field.Name
+		if len(label) == 0 {
+			label = field.Name
 		}
 
 		switch {
@@ -370,45 +370,69 @@ VALIDATE_RULES:
 			}
 		case rule == "AlphaDash":
 			if alphaDashPattern.MatchString(fmt.Sprintf("%v", fieldValue)) {
-				errors.Add([]string{field.Name}, ERR_ALPHA_DASH, "AlphaDash")
+				if len(errmsg) == 0 {
+					errmsg = fmt.Sprintf("%v仅接受英文、数字、中划线或下划线", label)
+				}
+				errors.Add([]string{field.Name}, ERR_ALPHA_DASH, errmsg)
 				break VALIDATE_RULES
 			}
 		case rule == "AlphaDashDot":
 			if alphaDashDotPattern.MatchString(fmt.Sprintf("%v", fieldValue)) {
-				errors.Add([]string{field.Name}, ERR_ALPHA_DASH_DOT, "AlphaDashDot")
+				if len(errmsg) == 0 {
+					errmsg = fmt.Sprintf("%v仅接受英文、数字、中划线、下划线和小数点", label)
+				}
+				errors.Add([]string{field.Name}, ERR_ALPHA_DASH_DOT, errmsg)
 				break VALIDATE_RULES
 			}
 		case strings.HasPrefix(rule, "Size("):
 			size, _ := strconv.Atoi(rule[5 : len(rule)-1])
 			if str, ok := fieldValue.(string); ok && utf8.RuneCountInString(str) != size {
-				errors.Add([]string{field.Name}, ERR_SIZE, "Size")
+				if len(errmsg) == 0 {
+					errmsg = fmt.Sprintf("%v的长度必须是%v字节", label, size)
+				}
+				errors.Add([]string{field.Name}, ERR_SIZE, errmsg)
 				break VALIDATE_RULES
 			}
 			v := reflect.ValueOf(fieldValue)
 			if v.Kind() == reflect.Slice && v.Len() != size {
-				errors.Add([]string{field.Name}, ERR_SIZE, "Size")
+				if len(errmsg) == 0 {
+					errmsg = fmt.Sprintf("%v必须有%v个元素", label, size)
+				}
+				errors.Add([]string{field.Name}, ERR_SIZE, errmsg)
 				break VALIDATE_RULES
 			}
 		case strings.HasPrefix(rule, "MinSize("):
 			min, _ := strconv.Atoi(rule[8 : len(rule)-1])
 			if str, ok := fieldValue.(string); ok && utf8.RuneCountInString(str) < min {
-				errors.Add([]string{field.Name}, ERR_MIN_SIZE, "MinSize")
+				if len(errmsg) == 0 {
+					errmsg = fmt.Sprintf("%v的长度不能小于%v字节", label, min)
+				}
+				errors.Add([]string{field.Name}, ERR_MIN_SIZE, errmsg)
 				break VALIDATE_RULES
 			}
 			v := reflect.ValueOf(fieldValue)
 			if v.Kind() == reflect.Slice && v.Len() < min {
-				errors.Add([]string{field.Name}, ERR_MIN_SIZE, "MinSize")
+				if len(errmsg) == 0 {
+					errmsg = fmt.Sprintf("%v不能少于%v个元素", label, min)
+				}
+				errors.Add([]string{field.Name}, ERR_MIN_SIZE, errmsg)
 				break VALIDATE_RULES
 			}
 		case strings.HasPrefix(rule, "MaxSize("):
 			max, _ := strconv.Atoi(rule[8 : len(rule)-1])
 			if str, ok := fieldValue.(string); ok && utf8.RuneCountInString(str) > max {
-				errors.Add([]string{field.Name}, ERR_MAX_SIZE, "MaxSize")
+				if len(errmsg) == 0 {
+					errmsg = fmt.Sprintf("%v的长度不能超过%v字节", label, max)
+				}
+				errors.Add([]string{field.Name}, ERR_MAX_SIZE, errmsg)
 				break VALIDATE_RULES
 			}
 			v := reflect.ValueOf(fieldValue)
 			if v.Kind() == reflect.Slice && v.Len() > max {
-				errors.Add([]string{field.Name}, ERR_MAX_SIZE, "MaxSize")
+				if len(errmsg) == 0 {
+					errmsg = fmt.Sprintf("%v不能超过%v个元素", label, max)
+				}
+				errors.Add([]string{field.Name}, ERR_MAX_SIZE, errmsg)
 				break VALIDATE_RULES
 			}
 		case strings.HasPrefix(rule, "Range("):
@@ -418,7 +442,10 @@ VALIDATE_RULES:
 			}
 			val := com.StrTo(fmt.Sprintf("%v", fieldValue)).MustInt()
 			if val < com.StrTo(nums[0]).MustInt() || val > com.StrTo(nums[1]).MustInt() {
-				errors.Add([]string{field.Name}, ERR_RANGE, "Range")
+				if len(errmsg) == 0 {
+					errmsg = fmt.Sprintf("%v的值必须在%v和%v之间", label, nums[0], nums[1])
+				}
+				errors.Add([]string{field.Name}, ERR_RANGE, errmsg)
 				break VALIDATE_RULES
 			}
 		case rule == "Email":
@@ -434,27 +461,42 @@ VALIDATE_RULES:
 			if len(str) == 0 {
 				continue
 			} else if !urlPattern.MatchString(str) {
-				errors.Add([]string{field.Name}, ERR_URL, "Url")
+				if len(errmsg) == 0 {
+					errmsg = fmt.Sprintf("%v必须为有效的URL地址", label)
+				}
+				errors.Add([]string{field.Name}, ERR_URL, errmsg)
 				break VALIDATE_RULES
 			}
 		case strings.HasPrefix(rule, "In("):
 			if !in(fieldValue, rule[3:len(rule)-1]) {
-				errors.Add([]string{field.Name}, ERR_IN, "In")
+				if len(errmsg) == 0 {
+					errmsg = fmt.Sprintf("%v的值必须为：%v 中的一个", label, rule[3:len(rule)-1])
+				}
+				errors.Add([]string{field.Name}, ERR_IN, errmsg)
 				break VALIDATE_RULES
 			}
 		case strings.HasPrefix(rule, "NotIn("):
 			if in(fieldValue, rule[6:len(rule)-1]) {
-				errors.Add([]string{field.Name}, ERR_NOT_INT, "NotIn")
+				if len(errmsg) == 0 {
+					errmsg = fmt.Sprintf("%v的值不能含有：%v 中的任何一个", label, rule[6:len(rule)-1])
+				}
+				errors.Add([]string{field.Name}, ERR_NOT_INT, errmsg)
 				break VALIDATE_RULES
 			}
 		case strings.HasPrefix(rule, "Include("):
 			if !strings.Contains(fmt.Sprintf("%v", fieldValue), rule[8:len(rule)-1]) {
-				errors.Add([]string{field.Name}, ERR_INCLUDE, "Include")
+				if len(errmsg) == 0 {
+					errmsg = fmt.Sprintf("%v的值必须含有：%v", label, rule[8:len(rule)-1])
+				}
+				errors.Add([]string{field.Name}, ERR_INCLUDE, errmsg)
 				break VALIDATE_RULES
 			}
 		case strings.HasPrefix(rule, "Exclude("):
 			if strings.Contains(fmt.Sprintf("%v", fieldValue), rule[8:len(rule)-1]) {
-				errors.Add([]string{field.Name}, ERR_EXCLUDE, "Exclude")
+				if len(errmsg) == 0 {
+					errmsg = fmt.Sprintf("%v的值不能含有：%v", label, rule[8:len(rule)-1])
+				}
+				errors.Add([]string{field.Name}, ERR_EXCLUDE, errmsg)
 				break VALIDATE_RULES
 			}
 		case strings.HasPrefix(rule, "Default("):
@@ -462,7 +504,10 @@ VALIDATE_RULES:
 				if fieldVal.CanAddr() {
 					setWithProperType(field.Type.Kind(), rule[8:len(rule)-1], fieldVal, field.Tag.Get("form"), errors)
 				} else {
-					errors.Add([]string{field.Name}, ERR_EXCLUDE, "Default")
+					if len(errmsg) == 0 {
+						errmsg = fmt.Sprintf("%v默认值设置失败", label)
+					}
+					errors.Add([]string{field.Name}, ERR_EXCLUDE, errmsg)
 					break VALIDATE_RULES
 				}
 			}
